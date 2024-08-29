@@ -6,13 +6,11 @@ ENV TZ "America/New_York"
 ENV CUPSADMIN admin
 ENV CUPSPASSWORD password
 
-
-LABEL org.opencontainers.image.source="https://github.com/anujdatar/cups-docker"
-LABEL org.opencontainers.image.description="CUPS Printer Server"
-LABEL org.opencontainers.image.author="Anuj Datar <anuj.datar@gmail.com>"
-LABEL org.opencontainers.image.url="https://github.com/anujdatar/cups-docker/blob/main/README.md"
+LABEL org.opencontainers.image.source="https://github.com/ferroman/cups-lbp7018c"
+LABEL org.opencontainers.image.description="CUPS Printer Server with preconfigured LBP7018C"
+LABEL org.opencontainers.image.author="Bohdan Frankovskyi <bfrankovskyi@gmail.com>"
+LABEL org.opencontainers.image.url="https://github.com/ferroman/cups-lbp7018c/blob/main/README.md"
 LABEL org.opencontainers.image.licenses=MIT
-
 
 # Install dependencies
 RUN apt-get update -qq  && apt-get upgrade -qqy \
@@ -30,11 +28,32 @@ RUN apt-get update -qq  && apt-get upgrade -qqy \
     hp-ppd \
     hplip \
     avahi-daemon \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    libglade2-0 \
+    libatk1.0-0 \
+    libcairo2 \
+    libgtk2.0-0 \
+    libpango1.0-0 \
+    libc6 \
+    libjpeg62 \
+    libxml2 \
+    libstdc++6 \
+    libpopt0 \
+    wget
 
 EXPOSE 631
 EXPOSE 5353/udp
+
+# Download the Canon CAPT driver tarball
+RUN wget https://gdlp01.c-wss.com/gds/6/0100004596/05/linux-capt-drv-v271-uken.tar.gz -O /tmp/linux-capt-drv.tar.gz
+
+# COPY ./linux-capt-drv.tar.gz /tmp/linux-capt-drv.tar.gz
+RUN tar -xzf /tmp/linux-capt-drv.tar.gz -C /tmp && \
+  dpkg -i /tmp/linux-capt-drv-v271-uken/32-bit_Driver/Debian/cndrvcups-common_3.21-1_i386.deb && \
+  dpkg -i /tmp/linux-capt-drv-v271-uken/32-bit_Driver/Debian/cndrvcups-capt_2.71-1_i386.deb
+
+# Clean up
+RUN apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Baked-in config file changes
 RUN sed -i 's/Listen localhost:631/Listen 0.0.0.0:631/' /etc/cups/cupsd.conf && \

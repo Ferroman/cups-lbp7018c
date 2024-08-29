@@ -1,15 +1,23 @@
 # CUPS-docker
 
-Run a CUPS print server on a remote machine to share USB printers over WiFi. Built primarily to use with Raspberry Pis as a headless server, but there is no reason this wouldn't work on `amd64` machines. Tested and confirmed working on a Raspberry Pi 3B+ (`arm/v7`) and Raspberry Pi 4 (`arm64/v8`).
+Run a CUPS print server on a remote machine to share USB printers over WiFi. 
 
-Container packages available from Docker Hub and Github Container Registry (ghcr.io)
-  - Docker Hub Image: `anujdatar/cups`
-  - GHCR Image: `ghcr.io/anujdatar/cups`
+Original image was created by Anuj Datar here: https://github.com/anujdatar/cups-docker and was built primarily to use with Raspberry Pis as a headless server, but there is no reason this wouldn't work on `amd64` machines. Tested and confirmed working on a Raspberry Pi 3B+ (`arm/v7`) and Raspberry Pi 4 (`arm64/v8`).
+
+However, I've modified it to share my local Cannon LBP7018C printer connected to my home NAS.
+
+Container packages available from Docker Hub
+  - Docker Hub Image: `bfrankovskyi/cups-lbp7018`
 
 ## Usage
+
+Installation of the LBP7018C drivers requires i386 packages present in the system which is problematic in modern arm64 builds. To avoid issues I've built i386 Docker image, meaning in order to run it on arm64 `--plaform linux/386` must be set.
+
+
 Quick start with default parameters
+
 ```sh
-docker run -d -p 631:631 --device /dev/bus/usb --name cups anujdatar/cups
+docker run --platform linux/386 -d -p 631:631 --device /dev/usb --name cups bfrankovskyi/cups-lbp7018
 ```
 
 Customizing your container
@@ -17,7 +25,7 @@ Customizing your container
 docker run -d --name cups \
     --restart unless-stopped \
     -p 631:631 \
-    --device /dev/bus/usb \
+    --device /dev/usb \
     -e CUPSADMIN=batman \
     -e CUPSPASSWORD=batcave_password \
     -e TZ="America/Gotham" \
@@ -28,7 +36,7 @@ docker run -d --name cups \
 
 ### Parameters and defaults
 - `port` -> default cups network port `631:631`. Change not recommended unless you know what you're doing
-- `device` -> used to give docker access to USB printer. Default passes the whole USB bus `/dev/bus/usb`, in case you change the USB port on your device later. change to specific USB port if it will always be fixed, for eg. `/dev/bus/usb/001/005`.
+- `device` -> used to give docker access to USB printer.  Entryfile will look for printer mounted in `/dev/usb/lp0` therefore `/dev/usb` device must be mount into container. This directory may not be present in system unless printer is already connected and powered on. Originally it was set default passes the whole USB bus `/dev/bus/usb`, in case you change the USB port on your device later. change to specific USB port if it will always be fixed, for eg. `/dev/bus/usb/001/005`.
 
 #### Optional parameters
 - `name` -> whatever you want to call your docker image. using `cups` in the example above.
@@ -46,7 +54,8 @@ Environment variables that can be changed to suit your needs, use the `-e` tag
 version: "3"
 services:
     cups:
-        image: anujdatar/cups
+        image: bfrankovskyi/cups-lbp7018
+        platform: linux/386
         container_name: cups
         restart: unless-stopped
         ports:
